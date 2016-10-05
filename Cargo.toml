@@ -1,0 +1,6 @@
+[package]
+name = "release-monitor"
+version = "0.1.0"
+authors = ["arnaud"]
+
+[dependencies]
