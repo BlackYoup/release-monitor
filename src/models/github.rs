@@ -76,8 +76,6 @@ impl Github{
 
         res.read_to_string(&mut buffer);
 
-        let ret: Vec<GithubTag> = json::decode(&buffer).unwrap();
-
-        return ret;
+        json::decode(&buffer).unwrap()
     }
 }
