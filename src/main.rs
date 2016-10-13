@@ -57,7 +57,7 @@ fn parse_projects(file_path: &String) -> Vec<Box<TProject>>{
 
 fn match_project(url: String) -> Option<Box<TProject>>{
     lazy_static!{
-        static ref GITHUB_RE: Regex = Regex::new(r"api.github.com").unwrap();
+        static ref GITHUB_RE: Regex = Regex::new(r"github.com").unwrap();
     }
 
     if GITHUB_RE.is_match(&url) {

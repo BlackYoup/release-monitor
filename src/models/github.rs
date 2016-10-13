@@ -1,7 +1,7 @@
 use rustc_serialize::json;
 use project::*;
 
-use hyper::Client;
+use hyper::{Client, Url};
 use hyper::header::UserAgent;
 
 use std::io::Read;
@@ -28,7 +28,8 @@ pub struct GithubProject{
 pub struct Github{
     pub tags: Option<Vec<GithubTag>>,
     pub url: String,
-    pub project: Option<GithubProject>
+    pub project: Option<GithubProject>,
+    pub api_url: Option<String>
 }
 
 impl TProject for Github{
@@ -65,7 +66,8 @@ impl Github{
         let mut github = Github{
             url: url,
             tags: None,
-            project: None
+            project: None,
+            api_url: None
         };
 
         github.init();
@@ -74,6 +76,7 @@ impl Github{
     }
 
     fn init(&mut self){
+        self.api_url = Some(self.to_api_url());
         self.project = Some(self.get_github_project());
         self.tags = Some(self.get_github_releases());
     }
@@ -83,14 +86,12 @@ impl Github{
     fn get_github_releases(&self) -> Vec<GithubTag>{
         let client = Client::new();
 
-        let mut api_url = String::new();
-        api_url.push_str(&self.url);
-        api_url.push_str("/tags");
+        let url = self.api_url.clone().unwrap() + "/tags";
 
-        println!("Calling {}", api_url);
+        println!("Got url: {}", url);
 
         let mut res = client
-            .get(&api_url)
+            .get(Url::parse(&url).unwrap())
             .header(UserAgent("BlackYoup".to_string()))
             .send()
             .unwrap();
@@ -102,11 +103,15 @@ impl Github{
         json::decode(&buffer).unwrap()
     }
 
+    // TODO
+    #[allow(unused_must_use)]
     fn get_github_project(&self) -> GithubProject{
         let client = Client::new();
 
+        let url = self.api_url.clone().unwrap();
+
         let mut res = client
-            .get(&self.url)
+            .get(Url::parse(&url).unwrap())
             .header(UserAgent("BlackYoup".to_string()))
             .send()
             .unwrap();
@@ -116,5 +121,9 @@ impl Github{
         res.read_to_string(&mut buffer);
 
         json::decode(&buffer).unwrap()
+    }
+
+    fn to_api_url(&self) -> String {
+        return self.url.clone().replace("github.com", "api.github.com");
     }
 }
