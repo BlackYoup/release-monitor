@@ -1,3 +1,6 @@
+// TODO: env var
+const GITHUB_NAME: &'static str = "BlackYoup";
+
 use rustc_serialize::json;
 use project::*;
 
@@ -112,7 +115,7 @@ impl Github{
 
         let mut res = client
             .get(Url::parse(&url).unwrap())
-            .header(UserAgent("BlackYoup".to_string()))
+            .header(UserAgent(GITHUB_NAME.to_string()))
             .send()
             .unwrap();
 
