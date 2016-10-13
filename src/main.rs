@@ -1,6 +1,7 @@
 extern crate regex;
 extern crate hyper;
 extern crate rustc_serialize;
+#[macro_use] extern crate lazy_static;
 
 mod models;
 mod project;
@@ -12,7 +13,7 @@ use std::fs::File;
 use std::io::Read;
 
 use models::github::Github;
-use project::Project;
+use project::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,33 +21,48 @@ fn main() {
     if args.len() <= 1 {
         println!("Use: release-monitor <projects file>");
     } else {
-        let urls = parse_projects(&args[1]);
-        let github: Github = Github::new(urls.first().unwrap().clone());
-        let releases = github.get_releases();
+        let projects: Vec<Box<TProject>> = parse_projects(&args[1]);
 
-        for release in releases{
-            println!("Release: {}", release.version);
+        for project in projects {
+            let project: Project = project.to_project();
+            println!("Project name: {}. Tags:", project.name);
+            for tag in project.releases{
+                println!("{}", tag.version);
+            }
         }
     }
 }
 
 // TODO
 #[allow(unused_must_use)]
-fn parse_projects(file_path: &String) -> Vec<String>{
+fn parse_projects(file_path: &String) -> Vec<Box<TProject>>{
     let mut file = File::open(file_path).unwrap();
     let mut buffer = String::new();
-    let mut ret = Vec::new();
+    let mut ret: Vec<Box<TProject>> = Vec::new();
 
     file.read_to_string(&mut buffer);
 
     let lines = buffer.split('\n');
-    let re = Regex::new(r"github.com").unwrap();
 
-    for line in lines{
-        if re.is_match(line){
-            ret.push(line.to_string());
+    for url in lines{
+        let p = match_project(url.to_string());
+
+        if p.is_some() {
+            ret.push(p.unwrap());
         }
     }
 
     return ret;
+}
+
+fn match_project(url: String) -> Option<Box<TProject>>{
+    lazy_static!{
+        static ref GITHUB_RE: Regex = Regex::new(r"api.github.com").unwrap();
+    }
+
+    if GITHUB_RE.is_match(&url) {
+        return Some(Box::new(Github::new(url)));
+    } else{
+        return None;
+    }
 }
