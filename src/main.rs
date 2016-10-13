@@ -1,7 +1,7 @@
-extern crate regex;
 extern crate hyper;
-extern crate rustc_serialize;
 #[macro_use] extern crate lazy_static;
+extern crate regex;
+extern crate rustc_serialize;
 
 mod models;
 mod project;
