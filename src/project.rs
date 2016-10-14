@@ -1,5 +1,9 @@
+use bson::{Bson, Document};
+use mongodb::{Client, ThreadedClient};
+use mongodb::db::ThreadedDatabase;
+
 pub enum ProjectType{
-    TGITHUB
+    GITHUB
 }
 
 pub struct Project{
@@ -34,7 +38,36 @@ pub trait TProject{
 
 impl Project{
     pub fn save(&self) -> bool {
-        println!("Saving project {}", self.name);
-        true
+        // TODO: env variables
+        let client = Client::connect("127.0.0.1", 27017)
+            .ok().expect("Couldn't connect to mongodb database");
+
+        // TODO: env variables
+        let collection = client.db("release_monitor").collection("projects");
+        let doc = self.get_document();
+
+        collection.insert_one(doc.clone(), None)
+            .ok().expect("Failed to insert document");
+
+        return true;
+    }
+
+    pub fn get_document(&self) -> Document{
+        let mut doc = Document::new();
+
+        doc.insert("name".to_owned(), Bson::String(self.name.clone()));
+        doc.insert("url".to_owned(), Bson::String(self.url.clone()));
+        doc.insert("url".to_owned(), Bson::String("YOLO".to_string()));
+
+        let mut releases: Vec<Bson> = Vec::new();
+        for release in &self.releases{
+            let mut release_doc = Document::new();
+            release_doc.insert("version".to_owned(), Bson::String(release.version.clone()));
+            releases.push(Bson::Document(release_doc));
+        }
+
+        doc.insert("versions", Bson::Array(releases));
+
+        return doc;
     }
 }

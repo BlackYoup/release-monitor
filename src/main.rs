@@ -1,5 +1,7 @@
+#[macro_use] extern crate bson;
 extern crate hyper;
 #[macro_use] extern crate lazy_static;
+extern crate mongodb;
 extern crate regex;
 extern crate rustc_serialize;
 
@@ -25,10 +27,7 @@ fn main() {
 
         for project in projects {
             let project: Project = project.to_project();
-            println!("Project name: {}. Tags:", project.name);
-            for tag in project.releases{
-                println!("{}", tag.version);
-            }
+            project.save();
         }
     }
 }
