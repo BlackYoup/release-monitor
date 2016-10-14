@@ -28,12 +28,7 @@ impl ProjectRelease{
 }
 
 pub trait TProject{
-    fn get_releases(&self) -> Vec<ProjectRelease>;
-    fn get_name(&self) -> String;
     fn to_project(&self) -> Project;
-    //fn get_name(&self) -> String;
-    //fn has_new_version(&self) -> Bool;
-    //fn get_last_release(&self) -> ProjectRelease;
 }
 
 impl Project{

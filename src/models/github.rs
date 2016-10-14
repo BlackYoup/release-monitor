@@ -36,24 +36,6 @@ pub struct Github{
 }
 
 impl TProject for Github{
-    fn get_releases(&self) -> Vec<ProjectRelease>{
-        let mut ret: Vec<ProjectRelease> = Vec::new();
-
-        let tags = &self.tags.clone().unwrap();
-
-        for tag in tags{
-            ret.push(ProjectRelease::new(tag.name.clone(), None));
-        }
-
-        return ret;
-    }
-
-    fn get_name(&self) -> String {
-        let project = &self.project.clone().unwrap();
-
-        return project.name.clone();
-    }
-
     fn to_project(&self) -> Project{
         Project{
             releases: self.get_releases(),
@@ -128,5 +110,23 @@ impl Github{
 
     fn to_api_url(&self) -> String {
         return self.url.clone().replace("github.com", "api.github.com");
+    }
+
+    fn get_releases(&self) -> Vec<ProjectRelease>{
+        let mut ret: Vec<ProjectRelease> = Vec::new();
+
+        let tags = &self.tags.clone().unwrap();
+
+        for tag in tags{
+            ret.push(ProjectRelease::new(tag.name.clone(), None));
+        }
+
+        return ret;
+    }
+
+    fn get_name(&self) -> String {
+        let project = &self.project.clone().unwrap();
+
+        return project.name.clone();
     }
 }
