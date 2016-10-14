@@ -52,7 +52,6 @@ impl Project{
 
         doc.insert("name".to_owned(), Bson::String(self.name.clone()));
         doc.insert("url".to_owned(), Bson::String(self.url.clone()));
-        doc.insert("url".to_owned(), Bson::String("YOLO".to_string()));
 
         let mut releases: Vec<Bson> = Vec::new();
         for release in &self.releases{
