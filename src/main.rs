@@ -27,6 +27,19 @@ fn main() {
 
         for project in projects {
             let project: Project = project.to_project();
+            let saved_project = project.get_saved_project();
+
+            if saved_project.is_some() {
+                // TODO: what happens if there are no versions yet ?
+                if Project::has_new_version(&saved_project.unwrap(), &project) {
+                    println!("Project {} is more recent", project.name);
+                } else {
+                    println!("Project {} is the same", project.name);
+                }
+            } else {
+                println!("Project {} not yet in database", project.name);
+            }
+
             project.save();
         }
     }

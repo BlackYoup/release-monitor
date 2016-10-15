@@ -41,7 +41,6 @@ impl TProject for Github{
             releases: self.get_releases(),
             name: self.get_name(),
             url: self.url.clone(),
-            project_type: ProjectType::GITHUB
         }
     }
 }
