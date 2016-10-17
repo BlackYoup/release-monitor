@@ -1,9 +1,12 @@
 use bson::{Bson, Document};
+use bson::oid::ObjectId;
 use mongodb::{Client, ThreadedClient};
 use mongodb::db::ThreadedDatabase;
+use mongodb::coll::results::UpdateResult;
 
 // TODO: create getters / setters
 pub struct Project{
+    pub object_id: Option<ObjectId>,
     pub releases: Vec<ProjectRelease>,
     pub name: String,
     pub url: String,
@@ -42,6 +45,7 @@ pub trait TProject{
 }
 
 impl Project{
+    // TODO: better return type
     pub fn save(&self) -> bool {
         // TODO: env variables
         let client = Client::connect("127.0.0.1", 27017)
@@ -51,8 +55,15 @@ impl Project{
         let collection = client.db("release_monitor").collection("projects");
         let doc = self.get_document();
 
-        collection.insert_one(doc.clone(), None)
-            .ok().expect("Failed to insert document");
+        if self.object_id.is_some() {
+            let mut filter = Document::new();
+            let object_id = self.object_id.clone().unwrap();
+            filter.insert("_id".to_owned(), Bson::ObjectId(object_id));
+
+            collection.update_one(filter, doc, None);
+        } else {
+            collection.insert_one(doc.clone(), None);
+        }
 
         return true;
     }
@@ -91,6 +102,11 @@ impl Project{
 
        match result{
             Some(res) => {
+                let object_id = match res.get("_id") {
+                    Some(&Bson::ObjectId(ref object_id)) => object_id,
+                    _ => panic!("Couldn't get item Id in Database")
+                };
+
                 let name = match res.get("name") {
                     Some(&Bson::String(ref name)) => name,
                     _ => panic!("Couldn't get project name")
@@ -123,6 +139,7 @@ impl Project{
                 }
 
                 return Some(Project{
+                    object_id: Some(object_id.clone()),
                     url: url.clone(),
                     name: name.clone(),
                     releases: releases
@@ -171,8 +188,6 @@ impl Project{
             let von = vo.unwrap();
             let vnn = vn.unwrap();
 
-            println!("Some, comparing {} and {}", von, vnn);
-
             if von < vnn {
                 return ReleaseType::NEWER;
             } else if von == vnn {
@@ -186,25 +201,21 @@ impl Project{
     }
 
     fn match_version(vo: Version, vn: Version) -> ReleaseType {
-        println!("Major");
         let major = Project::match_version_number(vo.major, vn.major);
         if major != ReleaseType::SAME {
            return major;
         }
 
-        println!("Minor");
         let minor = Project::match_version_number(vo.minor, vn.minor);
         if minor != ReleaseType::SAME {
             return minor;
         }
 
-        println!("Patch");
         let patch = Project::match_version_number(vo.patch, vn.patch);
         if patch != ReleaseType::SAME {
             return patch;
         }
 
-        println!("Revision");
         let rev = Project::match_version_number(vo.revision, vn.revision);
         if rev != ReleaseType::SAME {
             return rev;

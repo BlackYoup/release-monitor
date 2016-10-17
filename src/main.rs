@@ -40,7 +40,10 @@ fn main() {
                 println!("Project {} not yet in database", project.name);
             }
 
-            project.save();
+            match project.save() {
+                true => println!("Project {} updated", project.name),
+                false => println!("Couldn't update project {}", project.name)
+            }
         }
     }
 }
