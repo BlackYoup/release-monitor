@@ -223,6 +223,10 @@ impl Project{
 
         return ReleaseType::SAME;
     }
+
+    pub fn set_object_id(&mut self, object_id: ObjectId) {
+        self.object_id = Some(object_id);
+    }
 }
 
 impl Version{

@@ -26,16 +26,21 @@ fn main() {
         let projects: Vec<Box<TProject>> = parse_projects(&args[1]);
 
         for project in projects {
-            let project: Project = project.to_project();
-            let saved_project = project.get_saved_project();
+            let mut project: Project = project.to_project();
+            let saved_project = project.get_saved_project(&config);
 
             if saved_project.is_some() {
                 // TODO: what happens if there are no versions yet ?
-                if Project::has_new_version(&saved_project.unwrap(), &project) {
+                let _saved_project = saved_project.unwrap();
+                if Project::has_new_version(&_saved_project, &project) {
                     println!("Project {} is more recent", project.name);
                 } else {
                     println!("Project {} is the same", project.name);
                 }
+
+                let object_id = _saved_project.object_id.unwrap();
+
+                project.set_object_id(object_id);
             } else {
                 println!("Project {} not yet in database", project.name);
             }
