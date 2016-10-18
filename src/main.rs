@@ -7,6 +7,7 @@ extern crate rustc_serialize;
 
 mod models;
 mod project;
+mod config;
 
 use regex::Regex;
 
@@ -16,8 +17,10 @@ use std::io::Read;
 
 use models::github::Github;
 use project::*;
+use config::Config;
 
 fn main() {
+    let config = Config::new();
     let args: Vec<String> = env::args().collect();
 
     if args.len() <= 1 {
@@ -45,7 +48,7 @@ fn main() {
                 println!("Project {} not yet in database", project.name);
             }
 
-            match project.save() {
+            match project.save(&config) {
                 true => println!("Project {} updated", project.name),
                 false => println!("Couldn't update project {}", project.name)
             }

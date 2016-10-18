@@ -4,6 +4,8 @@ use mongodb::{Client, ThreadedClient};
 use mongodb::db::ThreadedDatabase;
 use mongodb::coll::results::UpdateResult;
 
+use config::Config;
+
 // TODO: create getters / setters
 pub struct Project{
     pub object_id: Option<ObjectId>,
@@ -46,13 +48,13 @@ pub trait TProject{
 
 impl Project{
     // TODO: better return type
-    pub fn save(&self) -> bool {
+    pub fn save(&self, config: &Config) -> bool {
         // TODO: env variables
-        let client = Client::connect("127.0.0.1", 27017)
+        let client = Client::connect(&config.mongo.uri, config.mongo.port)
             .ok().expect("Couldn't connect to mongodb database");
 
         // TODO: env variables
-        let collection = client.db("release_monitor").collection("projects");
+        let collection = client.db(&config.mongo.database).collection("projects");
         let doc = self.get_document();
 
         if self.object_id.is_some() {
@@ -86,12 +88,12 @@ impl Project{
         return doc;
     }
 
-    pub fn get_saved_project(&self) -> Option<Project>{
+    pub fn get_saved_project(&self, config: &Config) -> Option<Project>{
         // TODO: re-use same client accross execution
-        let client = Client::connect("127.0.0.1", 27017)
+        let client = Client::connect(&config.mongo.uri, config.mongo.port)
             .ok().expect("Couldn't connect to mongodb database");
 
-        let collection = client.db("release_monitor").collection("projects");
+        let collection = client.db(&config.mongo.database).collection("projects");
 
         let mut find = Document::new();
         find.insert("name".to_owned(), Bson::String(self.name.clone()));
