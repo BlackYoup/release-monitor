@@ -181,10 +181,8 @@ impl Project{
 
     fn match_version_number(vo: Option<u16>, vn: Option<u16>) -> ReleaseType{
         if !vo.is_some() && vn.is_some() {
-            println!("Not some 1");
             return ReleaseType::NEWER;
         } else if vo.is_some() && !vn.is_some() {
-            println!("Not some 2");
             return ReleaseType::OLDER;
         } else if vo.is_some() && vn.is_some() {
             let von = vo.unwrap();
