@@ -12,8 +12,6 @@ mod config;
 use regex::Regex;
 
 use std::env;
-use std::fs::File;
-use std::io::Read;
 
 use models::github::Github;
 use project::*;
@@ -24,68 +22,73 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() <= 1 {
-        println!("Use: release-monitor <projects file>");
+        help();
     } else {
-        let projects: Vec<Box<TProject>> = parse_projects(&args[1]);
+        match args[1].to_string() {
+            // TODO: ensure args[2] exists
+            ref add if add == "add-project" => add_project(&args[2], &config),
+            ref w if w == "watch" => watch(&config),
+            _ => help()
+        }
+    }
+}
 
-        for project in projects {
-            let mut project: Project = project.to_project();
-            let saved_project = project.get_saved_project(&config);
+fn help(){
+    println!("Use: release-monitor <option>");
+    println!("Available options:");
+    println!("add <url>");
+    println!("watch");
+}
 
-            if saved_project.is_some() {
+fn add_project(url: &String, config: &Config) {
+    match match_project(&url) {
+        Some(project) => project.to_project().save(&config),
+        None => panic!("Couldn't match project {}", url)
+    };
+}
+
+fn match_project(url: &str) -> Option<Box<TProject>>{
+    lazy_static!{
+        static ref GITHUB_RE: Regex = Regex::new(r"github.com").unwrap();
+    }
+
+    if GITHUB_RE.is_match(url) {
+        return Some(Box::new(Github::new(url.to_string())));
+    } else{
+        return None;
+    }
+}
+
+fn watch(config: &Config) {
+    let projects: Vec<Option<Project>> = Project::get_all_saved_projects(&config);
+
+    println!("Analyzing {} projects", projects.len());
+
+    for saved_project in projects {
+        match saved_project {
+            Some(saved_project) => {
+                let mut project: Project = saved_project
+                    .to_original()
+                    .expect("Couldn't transfer project to original")
+                    .to_project();
+
                 // TODO: what happens if there are no versions yet ?
-                let _saved_project = saved_project.unwrap();
-                if Project::has_new_version(&_saved_project, &project) {
+                if Project::has_new_version(&saved_project, &project) {
                     println!("Project {} is more recent", project.name);
                 } else {
                     println!("Project {} is the same", project.name);
                 }
 
-                let object_id = _saved_project.object_id.unwrap();
+                let object_id = saved_project.object_id.unwrap();
 
                 project.set_object_id(object_id);
-            } else {
-                println!("Project {} not yet in database", project.name);
-            }
 
-            match project.save(&config) {
-                true => println!("Project {} updated", project.name),
-                false => println!("Couldn't update project {}", project.name)
-            }
+                match project.save(&config) {
+                    true => println!("Project {} updated", project.name),
+                    false => println!("Couldn't update project {}", project.name)
+                }
+            },
+            None => panic!("Couldn't parse project")
         }
-    }
-}
-
-// TODO
-#[allow(unused_must_use)]
-fn parse_projects(file_path: &String) -> Vec<Box<TProject>>{
-    let mut file = File::open(file_path).unwrap();
-    let mut buffer = String::new();
-    let mut ret: Vec<Box<TProject>> = Vec::new();
-
-    file.read_to_string(&mut buffer);
-
-    let lines = buffer.split('\n');
-
-    for url in lines{
-        let p = match_project(url.to_string());
-
-        if p.is_some() {
-            ret.push(p.unwrap());
-        }
-    }
-
-    return ret;
-}
-
-fn match_project(url: String) -> Option<Box<TProject>>{
-    lazy_static!{
-        static ref GITHUB_RE: Regex = Regex::new(r"github.com").unwrap();
-    }
-
-    if GITHUB_RE.is_match(&url) {
-        return Some(Box::new(Github::new(url)));
-    } else{
-        return None;
     }
 }

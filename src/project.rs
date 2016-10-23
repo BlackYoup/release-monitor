@@ -2,9 +2,13 @@ use bson::{Bson, Document};
 use bson::oid::ObjectId;
 use mongodb::{Client, ThreadedClient};
 use mongodb::db::ThreadedDatabase;
-use mongodb::coll::results::UpdateResult;
 
 use config::Config;
+use models::github::Github;
+
+pub enum ProjectTypes{
+    GITHUB
+}
 
 // TODO: create getters / setters
 pub struct Project{
@@ -12,6 +16,7 @@ pub struct Project{
     pub releases: Vec<ProjectRelease>,
     pub name: String,
     pub url: String,
+    pub project_type: ProjectTypes
 }
 
 #[derive(PartialEq)]
@@ -48,6 +53,7 @@ pub trait TProject{
 
 impl Project{
     // TODO: better return type
+    #[allow(unused_must_use)]
     pub fn save(&self, config: &Config) -> bool {
         // TODO: env variables
         let client = Client::connect(&config.mongo.uri, config.mongo.port)
@@ -62,9 +68,12 @@ impl Project{
             let object_id = self.object_id.clone().unwrap();
             filter.insert("_id".to_owned(), Bson::ObjectId(object_id));
 
-            collection.update_one(filter, doc, None);
+            match collection.replace_one(filter, doc.clone(), None) {
+                Ok(_) => true,
+                Err(err) => panic!("Error when updating: {}", err)
+            };
         } else {
-            collection.insert_one(doc.clone(), None);
+            collection.insert_one(doc, None);
         }
 
         return true;
@@ -75,6 +84,7 @@ impl Project{
 
         doc.insert("name".to_owned(), Bson::String(self.name.clone()));
         doc.insert("url".to_owned(), Bson::String(self.url.clone()));
+        doc.insert("type".to_owned(), Bson::String(self.get_project_type_str()));
 
         let mut releases: Vec<Bson> = Vec::new();
         for release in &self.releases{
@@ -88,67 +98,26 @@ impl Project{
         return doc;
     }
 
-    pub fn get_saved_project(&self, config: &Config) -> Option<Project>{
-        // TODO: re-use same client accross execution
+    pub fn get_all_saved_projects(config: &Config) -> Vec<Option<Project>>{
         let client = Client::connect(&config.mongo.uri, config.mongo.port)
             .ok().expect("Couldn't connect to mongodb database");
 
         let collection = client.db(&config.mongo.database).collection("projects");
+        let find = Document::new();
 
-        let mut find = Document::new();
-        find.insert("name".to_owned(), Bson::String(self.name.clone()));
-        find.insert("url".to_owned(), Bson::String(self.url.clone()));
-
-        let result = collection.find_one(Some(find), None)
+        let results = collection.find(Some(find), None)
             .ok().expect("Failed to execute find");
 
-       match result{
-            Some(res) => {
-                let object_id = match res.get("_id") {
-                    Some(&Bson::ObjectId(ref object_id)) => object_id,
-                    _ => panic!("Couldn't get item Id in Database")
-                };
+        let mut res: Vec<Option<Project>> = Vec::new();
 
-                let name = match res.get("name") {
-                    Some(&Bson::String(ref name)) => name,
-                    _ => panic!("Couldn't get project name")
-                };
-
-                let url = match res.get("url") {
-                    Some(&Bson::String(ref url)) => url,
-                    _ => panic!("Couldn't get project url")
-                };
-
-                let b_releases = match res.get("releases") {
-                    Some(&Bson::Array(ref releases)) => releases,
-                    _ => panic!("Couldn't get project releases")
-                };
-
-                let mut releases: Vec<ProjectRelease> = Vec::new();
-
-                for b_release in b_releases{
-                    let release = match b_release {
-                        &Bson::Document(ref release) => {
-                            match release.get("version") {
-                                Some(&Bson::String(ref version)) => version,
-                                _ => panic!("Couldn't get project release version")
-                            }
-                        },
-                        _ => panic!("Couldn't get project release")
-                    };
-
-                    releases.push(ProjectRelease::new(release.clone(), None));
-                }
-
-                return Some(Project{
-                    object_id: Some(object_id.clone()),
-                    url: url.clone(),
-                    name: name.clone(),
-                    releases: releases
-                });
-            },
-            None => None
+        for result in results{
+            match result{
+                Ok(doc) => res.push(Project::from_document(doc)),
+                Err(_) => res.push(None)
+            }
         }
+
+        return res;
     }
 
     fn get_last_release(&self) -> Option<&ProjectRelease>{
@@ -226,6 +195,76 @@ impl Project{
 
     pub fn set_object_id(&mut self, object_id: ObjectId) {
         self.object_id = Some(object_id);
+    }
+
+    fn from_document(doc: Document) -> Option<Project>{
+        let object_id = match doc.get("_id") {
+            Some(&Bson::ObjectId(ref object_id)) => object_id,
+            _ => panic!("Couldn't get item Id in Database")
+        };
+
+        let name = match doc.get("name") {
+            Some(&Bson::String(ref name)) => name,
+            _ => panic!("Couldn't get project name")
+        };
+
+        let url = match doc.get("url") {
+            Some(&Bson::String(ref url)) => url,
+            _ => panic!("Couldn't get project url")
+        };
+
+        let project_type = match doc.get("type") {
+            Some(&Bson::String(ref project_type)) => project_type,
+            _ => panic!("Couldn't get project type")
+        };
+
+        let b_releases = match doc.get("releases") {
+            Some(&Bson::Array(ref releases)) => releases,
+            _ => panic!("Couldn't get project releases")
+        };
+
+        let mut releases: Vec<ProjectRelease> = Vec::new();
+
+        for b_release in b_releases{
+            let release = match b_release {
+                &Bson::Document(ref release) => {
+                    match release.get("version") {
+                        Some(&Bson::String(ref version)) => version,
+                        _ => panic!("Couldn't get project release version")
+                    }
+                },
+                _ => panic!("Couldn't get project release")
+            };
+
+            releases.push(ProjectRelease::new(release.clone(), None));
+        }
+
+        return Some(Project{
+            object_id: Some(object_id.clone()),
+            url: url.clone(),
+            name: name.clone(),
+            releases: releases,
+            project_type: Project::get_project_type_enum(&project_type)
+        });
+    }
+
+    fn get_project_type_str(&self) -> String{
+        match self.project_type {
+            ProjectTypes::GITHUB => "Github".to_string()
+        }
+    }
+
+    fn get_project_type_enum(project_type: &str) -> ProjectTypes{
+        match project_type {
+            "Github" => ProjectTypes::GITHUB,
+            _ => panic!("Unknown project type {}", project_type)
+        }
+    }
+
+    pub fn to_original(&self) -> Option<Box<TProject>>{
+        match self.project_type {
+            ProjectTypes::GITHUB => Some(Box::new(Github::new(self.url.clone())))
+        }
     }
 }
 

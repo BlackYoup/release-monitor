@@ -41,7 +41,8 @@ impl TProject for Github{
             releases: self.get_releases(),
             name: self.get_name(),
             url: self.url.clone(),
-            object_id: None
+            object_id: None,
+            project_type: ProjectTypes::GITHUB
         }
     }
 }
@@ -72,8 +73,6 @@ impl Github{
         let client = Client::new();
 
         let url = self.api_url.clone().unwrap() + "/tags";
-
-        println!("Got url: {}", url);
 
         let mut res = client
             .get(Url::parse(&url).unwrap())
@@ -109,7 +108,9 @@ impl Github{
     }
 
     fn to_api_url(&self) -> String {
-        return self.url.clone().replace("github.com", "api.github.com");
+        return self.url
+            .clone()
+            .replace("github.com", "api.github.com/repos");
     }
 
     fn get_releases(&self) -> Vec<ProjectRelease>{
