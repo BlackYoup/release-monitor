@@ -63,9 +63,11 @@ fn match_project(url: &str, config: &Config) -> Option<Box<TProject>>{
 
 fn watch(config: &Config) {
     let projects: Vec<Option<Project>> = Project::get_all_saved_projects(&config);
+    let nbr = projects.len();
 
-    println!("Analyzing {} projects", projects.len());
+    println!("Analyzing {} projects", nbr);
 
+    let mut count = 1;
     for saved_project in projects {
         match saved_project {
             Some(saved_project) => {
@@ -76,9 +78,9 @@ fn watch(config: &Config) {
 
                 // TODO: what happens if there are no versions yet ?
                 if Project::has_new_version(&saved_project, &project) {
-                    println!("Project {} is more recent", project.name);
+                    println!("{}/{} Project {} is more recent", project.name, count, nbr);
                 } else {
-                    println!("Project {} is the same", project.name);
+                    println!("{}/{} Project {} is the same", count, nbr, project.name);
                 }
 
                 let object_id = saved_project.object_id.unwrap();
@@ -86,9 +88,11 @@ fn watch(config: &Config) {
                 project.set_object_id(object_id);
 
                 match project.save(&config) {
-                    true => println!("Project {} updated", project.name),
-                    false => println!("Couldn't update project {}", project.name)
+                    false => println!("Couldn't update project {}", project.name),
+                    true => ()
                 }
+
+                count = count + 1;
             },
             None => panic!("Couldn't parse project")
         }
