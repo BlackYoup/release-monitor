@@ -1,13 +1,12 @@
-// TODO: env var
-const GITHUB_NAME: &'static str = "BlackYoup";
-
-use rustc_serialize::json;
-use project::*;
-
 use hyper::{Client, Url};
-use hyper::header::UserAgent;
-
+use hyper::header::{UserAgent, Basic, Authorization};
 use std::io::Read;
+use std::str::from_utf8;
+
+use config::*;
+use project::*;
+use rustc_serialize::json;
+use utils::*;
 
 #[derive(RustcDecodable, Clone)]
 struct GithubCommit{
@@ -32,7 +31,13 @@ pub struct Github{
     pub tags: Option<Vec<GithubTag>>,
     pub url: String,
     pub project: Option<GithubProject>,
-    pub api_url: Option<String>
+    pub api_url: Option<String>,
+    pub config: Config
+}
+
+#[derive(RustcDecodable)]
+pub struct GithubStarred{
+    pub html_url: String
 }
 
 impl TProject for Github{
@@ -48,12 +53,14 @@ impl TProject for Github{
 }
 
 impl Github{
-    pub fn new(url: String) -> Github{
+    // TODO: better handle Config
+    pub fn new(url: String, config: Config) -> Github{
         let mut github = Github{
             url: url,
             tags: None,
             project: None,
-            api_url: None
+            api_url: None,
+            config: config
         };
 
         github.init();
@@ -76,7 +83,11 @@ impl Github{
 
         let mut res = client
             .get(Url::parse(&url).unwrap())
-            .header(UserAgent("BlackYoup".to_string()))
+            .header(UserAgent(self.config.github.username.clone()))
+            .header(Authorization(Basic{
+                username: self.config.github.username.clone(),
+                password: Some(self.config.github.token.clone())
+            }))
             .send()
             .unwrap();
 
@@ -96,7 +107,11 @@ impl Github{
 
         let mut res = client
             .get(Url::parse(&url).unwrap())
-            .header(UserAgent(GITHUB_NAME.to_string()))
+            .header(UserAgent(self.config.github.username.to_string()))
+            .header(Authorization(Basic{
+                username: self.config.github.username.clone(),
+                password: Some(self.config.github.token.clone())
+            }))
             .send()
             .unwrap();
 
@@ -129,5 +144,74 @@ impl Github{
         let project = &self.project.clone().unwrap();
 
         return project.name.clone();
+    }
+
+    // TODO
+    #[allow(unused_must_use)]
+    pub fn import(username: &str, config: Config) {
+        let projects = Github::get_starred_projects(&username, &config, None).unwrap();
+        let projects_count = projects.len();
+
+        println!("Importing {} projects", projects_count);
+
+        let mut count = 1;
+        for project in projects{
+            let p = Github::new(project.html_url, config.clone()).to_project();
+
+            if !p.exists(&config) {
+                println!("{}/{} Importing project {}", count, projects_count, p.name);
+                p.save(&config);
+            } else {
+                println!("{}/{} Project {} already tracked, skipping it...", count, projects_count, p.name);
+            }
+            count = count + 1;
+        }
+    }
+
+    pub fn get_starred_projects(username: &str, config: &Config,
+        next_url: Option<String>) -> Option<Vec<GithubStarred>>{
+        let client = Client::new();
+        let mut url = String::new();
+
+        // TODO: find a better way
+        if next_url.is_some() {
+            url = next_url.unwrap();
+        } else {
+            url.push_str("https://api.github.com/users/");
+            url.push_str(username);
+            url.push_str("/starred");
+        };
+
+        println!("Calling URL {}", url);
+
+        let mut res = client
+            .get(Url::parse(&url).unwrap())
+            .header(UserAgent(username.to_string()))
+            .header(Authorization(Basic{
+                username: config.github.username.clone(),
+                password: Some(config.github.token.clone())
+            }))
+            .send()
+            .unwrap();
+
+        let mut buffer = String::new();
+        res.read_to_string(&mut buffer);
+
+        let tmp = res.headers.get_raw("Link").unwrap().first().unwrap();
+        let next = extract_next_link(from_utf8(tmp.as_slice()).unwrap().to_string());
+
+        match next {
+            Some(next_url) => {
+                let mut projects: Vec<GithubStarred> = json::decode(&buffer).unwrap();
+                match Github::get_starred_projects(&username, &config, Some(next_url)) {
+                    Some(mut p) => {
+                        projects.append(&mut p);
+                        Some(projects)
+                    },
+                    None => Some(projects)
+                }
+            },
+            None => None
+        }
     }
 }

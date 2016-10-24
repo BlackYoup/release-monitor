@@ -261,9 +261,27 @@ impl Project{
         }
     }
 
-    pub fn to_original(&self) -> Option<Box<TProject>>{
+    pub fn to_original(&self, config: &Config) -> Option<Box<TProject>>{
         match self.project_type {
-            ProjectTypes::GITHUB => Some(Box::new(Github::new(self.url.clone())))
+            ProjectTypes::GITHUB => Some(Box::new(Github::new(self.url.clone(), config.clone())))
+        }
+    }
+
+    pub fn exists(&self, config: &Config) -> bool{
+        let mut find = Document::new();
+        find.insert("name".to_owned(), Bson::String(self.name.clone()));
+        find.insert("url".to_owned(), Bson::String(self.url.clone()));
+
+        let client = Client::connect(&config.mongo.uri, config.mongo.port)
+            .ok().expect("Couldn't connect to mongodb database");
+
+        let collection = client.db(&config.mongo.database).collection("projects");
+
+        let result = collection.find_one(Some(find), None).ok().expect("Couldn't find_one project");
+
+        match result {
+            Some(_) => true,
+            None => false
         }
     }
 }
