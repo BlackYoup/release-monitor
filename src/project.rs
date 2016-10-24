@@ -5,6 +5,7 @@ use mongodb::db::ThreadedDatabase;
 
 use config::Config;
 use models::github::Github;
+use regex::Regex;
 
 pub enum ProjectTypes{
     GITHUB
@@ -288,7 +289,9 @@ impl Project{
 
 impl Version{
     pub fn new(version: &String) -> Version{
-        let numbers: Vec<&str> = version.split('.').collect();
+        let re = Regex::new("^[A-Za-z]*-?").unwrap();
+        let _version = re.replace(version, "");
+        let numbers: Vec<&str> = _version.split('.').collect();
 
         let major = match numbers.get(0) {
             Some(x) => {
