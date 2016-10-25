@@ -297,7 +297,7 @@ impl Version{
             Some(x) => {
                 match x.parse::<u16>() {
                     Ok(y) => Some(y),
-                    _ => panic!("Couldn't format major {} from {}", x, version)
+                    Err(_) => Some(0)
                 }
             },
             None => panic!("Couldn't get major version number from {}", version)
@@ -307,7 +307,7 @@ impl Version{
             Some(x) => {
                 match x.parse::<u16>() {
                     Ok(y) => Some(y),
-                    _ => None
+                    Err(_) => None
                 }
             },
             None => None
@@ -325,20 +325,13 @@ impl Version{
 
         let revision = match numbers.last() {
             Some(last) => {
-                let revs: Vec<&str> = last.split('-').collect();
-
-                match revs.len() {
-                    2 => {
-                        match revs.get(1) {
-                            Some(x) => match x.parse::<u16>() {
-                                Ok(y) => Some(y),
-                                _ => panic!("Couldn't format revision for {}", version)
-                            },
-                            None => None
-                        }
+                let revs: Vec<&str> = last.splitn(1, "-").collect();
+                match revs.get(1) {
+                    Some(x) => match x.parse::<u16>() {
+                        Ok(y) => Some(y),
+                        Err(_) => None
                     },
-                    0...1 => None,
-                    _ => panic!("Multiple revisions ({}) for same project", version)
+                    None => None
                 }
             },
             None => None
