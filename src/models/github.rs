@@ -168,6 +168,7 @@ impl Github{
         }
     }
 
+    #[allow(unused_must_use)]
     pub fn get_starred_projects(username: &str, config: &Config,
         next_url: Option<String>) -> Option<Vec<GithubStarred>>{
         let client = Client::new();
