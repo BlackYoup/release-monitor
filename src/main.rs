@@ -78,7 +78,7 @@ fn watch(config: &Config) {
 
                 // TODO: what happens if there are no versions yet ?
                 if Project::has_new_version(&saved_project, &project) {
-                    println!("{}/{} Project {} is more recent", project.name, count, nbr);
+                    println!("{}/{} Project {} is more recent", count, nbr, project.name);
                 } else {
                     println!("{}/{} Project {} is the same", count, nbr, project.name);
                 }
