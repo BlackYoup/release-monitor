@@ -64,6 +64,7 @@ fn match_project(url: &str, config: &Config) -> Option<Box<TProject>>{
 
 fn watch(config: &Config) {
     let projects: Vec<Option<Project>> = Project::get_all_saved_projects(&config);
+    let mut updated_projects: Vec<Project> = Vec::new();
     let nbr = projects.len();
 
     println!("Analyzing {} projects", nbr);
@@ -80,6 +81,7 @@ fn watch(config: &Config) {
                 // TODO: what happens if there are no versions yet ?
                 if Project::has_new_version(&saved_project, &project) {
                     println!("{}/{} Project {} is more recent", count, nbr, project.name);
+                    updated_projects.push(project.clone());
                 } else {
                     println!("{}/{} Project {} is the same", count, nbr, project.name);
                 }
@@ -97,5 +99,11 @@ fn watch(config: &Config) {
             },
             None => panic!("Couldn't parse project")
         }
+    }
+
+    println!("");
+    for updated_project in updated_projects{
+        let ref version = updated_project.get_last_release().unwrap().version;
+        println!("Project {} has been updated to {}", updated_project.name, version);
     }
 }

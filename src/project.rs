@@ -7,11 +7,13 @@ use config::Config;
 use models::github::Github;
 use version::Version;
 
+#[derive(Clone)]
 pub enum ProjectTypes{
     GITHUB
 }
 
 // TODO: create getters / setters
+#[derive(Clone)]
 pub struct Project{
     pub object_id: Option<ObjectId>,
     pub releases: Vec<ProjectRelease>,
@@ -27,8 +29,9 @@ pub enum ReleaseType{
     OLDER
 }
 
+#[derive(Clone)]
 pub struct ProjectRelease{
-    pub version: String,
+    pub version: String, // TODO: use the Version struct ?
     date: Option<String> // TODO: better type
 }
 
@@ -114,7 +117,7 @@ impl Project{
         return res;
     }
 
-    fn get_last_release(&self) -> Option<&ProjectRelease>{
+    pub fn get_last_release(&self) -> Option<&ProjectRelease>{
         return self.releases.first();
     }
 
