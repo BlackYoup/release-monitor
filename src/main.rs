@@ -5,10 +5,11 @@ extern crate mongodb;
 extern crate regex;
 extern crate rustc_serialize;
 
+mod config;
 mod models;
 mod project;
-mod config;
 mod utils;
+mod version;
 
 use regex::Regex;
 use std::env;
